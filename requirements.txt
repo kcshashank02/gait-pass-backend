@@ -1,0 +1,88 @@
+# FastAPI Core
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Database
+motor==3.3.2
+pymongo==4.6.0
+dnspython==2.8.0
+
+# Authentication - FIXED VERSIONS
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1  # ✅ Specific compatible version
+
+# HTTP Client
+httpx==0.25.2
+
+# Data Processing
+numpy==1.24.3
+
+# Validation
+email-validator==2.1.0
+
+# Utilities
+pydantic==2.5.0
+pydantic-settings==2.1.0
+python-dotenv==1.0.0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # FastAPI Core
+# fastapi==0.104.1
+# uvicorn[standard]==0.24.0
+# python-multipart==0.0.6
+
+# # Database
+# motor==3.3.2
+# pymongo==4.6.0
+
+# # Authentication
+# python-jose[cryptography]==3.3.0
+# passlib[bcrypt]==1.7.4
+
+# # HTTP Client (to call ML service)
+# httpx==0.25.2
+
+# # Utilities
+# pydantic==2.5.0
+# pydantic-settings==2.1.0
+# python-dotenv==1.0.0
+# email-validator==2.1.0  # ✅ ADD THIS
+
+# # DNS for email validation
+# dnspython==2.8.0  # ✅ ADD THIS
+
+# numpy==1.24.3
