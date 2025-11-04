@@ -80,22 +80,6 @@ class FaceData:
             logger.error(f"Get embedding failed: {e}")
             return None
     
-    # async def get_all_active_embeddings(self) -> Dict[str, List[float]]:
-    #     """Get all active embeddings for recognition"""
-    #     try:
-    #         cursor = self.collection.find({"is_active": True})
-            
-    #         embeddings = {}
-    #         async for doc in cursor:
-    #             user_id = str(doc["user_id"])
-    #             embeddings[user_id] = doc["face_embedding"]
-                
-    #         logger.info(f"📊 Retrieved {len(embeddings)} embeddings for recognition")
-    #         return embeddings
-            
-    #     except Exception as e:
-    #         logger.error(f"Get all embeddings failed: {e}")
-    #         return {}
     async def get_all_active_embeddings(self) -> Dict[str, List[List[float]]]:
         """Get all active face embeddings grouped by user_id"""
         try:

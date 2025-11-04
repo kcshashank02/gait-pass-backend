@@ -19,7 +19,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire, "type": "access"})
-    # ✅ FIXED: Use JWT_SECRET instead of SECRET_KEY
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt
 
@@ -28,14 +27,12 @@ def create_refresh_token(data: dict):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire, "type": "refresh"})
-    # ✅ FIXED: Use JWT_SECRET instead of SECRET_KEY
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt
 
 def verify_token(token: str) -> Optional[Dict]:
     """Verify and decode JWT token"""
     try:
-        # ✅ FIXED: Use JWT_SECRET instead of SECRET_KEY
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
         return payload
     except JWTError:
@@ -61,8 +58,7 @@ async def get_current_user(
     if payload is None or payload.get("type") != "access":
         raise credentials_exception
     
-    # ✅ FIX: Use 'email' field instead of 'sub'
-    user_email = payload.get("email")  # Changed from payload.get("sub")
+    user_email = payload.get("email")  
     
     if user_email is None:
         raise credentials_exception
@@ -74,56 +70,6 @@ async def get_current_user(
         raise credentials_exception
     
     return user
-
-# async def get_current_user(
-#     credentials: HTTPAuthorizationCredentials = Depends(security),
-#     db=Depends(get_database)
-# ) -> dict:
-#     """Get current authenticated user"""
-#     credentials_exception = HTTPException(
-#         status_code=status.HTTP_401_UNAUTHORIZED,
-#         detail="Could not validate credentials",
-#         headers={"WWW-Authenticate": "Bearer"},
-#     )
-    
-#     token = credentials.credentials
-#     payload = verify_token(token)
-    
-#     if payload is None or payload.get("type") != "access":
-#         raise credentials_exception
-    
-#     # ✅ FIX: sub contains email, not user_id
-#     user_email = payload.get("sub")
-#     if user_email is None:
-#         raise credentials_exception
-    
-#     # ✅ Get user by email instead of ID
-#     user_model = User(db)
-#     user = await user_model.get_user_by_email(user_email)
-    
-#     if user is None:
-#         raise credentials_exception
-    
-#     return user
-
-
-
-
-# async def get_current_admin_user(current_user: dict = Depends(get_current_user)) -> dict:
-#     """Verify that the current user is an admin"""
-#     if not current_user:
-#         raise HTTPException(
-#             status_code=status.HTTP_401_UNAUTHORIZED,
-#             detail="Not authenticated"
-#         )
-    
-#     if current_user.get("role") != "admin":
-#         raise HTTPException(
-#             status_code=status.HTTP_403_FORBIDDEN,
-#             detail="Admin access required"
-#         )
-    
-#     return current_user
 
 async def get_current_admin_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
@@ -184,160 +130,4 @@ def create_tokens(user: Dict) -> Dict:
         "refresh_token": refresh_token,
         "token_type": "bearer"
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# from datetime import datetime, timedelta
-# from typing import Optional, Dict
-# from jose import JWTError, jwt
-# from fastapi import Depends, HTTPException, status
-# from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-# from app.core.config import settings
-# from app.core.database import get_database
-# from app.models.user import User
-# import logging
-
-# logger = logging.getLogger(__name__)
-
-# # Security scheme
-# security = HTTPBearer()
-
-
-# def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-#     """Create JWT access token"""
-#     to_encode = data.copy()
-#     if expires_delta:
-#         expire = datetime.utcnow() + expires_delta
-#     else:
-#         expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-
-#     to_encode.update({"exp": expire, "type": "access"})
-#     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-#     return encoded_jwt
-
-
-# def create_refresh_token(data: dict):
-#     """Create JWT refresh token"""
-#     to_encode = data.copy()
-#     expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-#     to_encode.update({"exp": expire, "type": "refresh"})
-#     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-#     return encoded_jwt
-
-
-# def verify_token(token: str) -> Optional[Dict]:
-#     """Verify and decode JWT token"""
-#     try:
-#         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-#         return payload
-#     except JWTError:
-#         return None
-
-
-# async def get_current_user(
-#     credentials: HTTPAuthorizationCredentials = Depends(security),
-#     db=Depends(get_database)
-# ) -> dict:
-#     """Get current authenticated user"""
-#     credentials_exception = HTTPException(
-#         status_code=status.HTTP_401_UNAUTHORIZED,
-#         detail="Could not validate credentials",
-#         headers={"WWW-Authenticate": "Bearer"},
-#     )
-
-#     token = credentials.credentials
-#     payload = verify_token(token)
-
-#     if payload is None or payload.get("type") != "access":
-#         raise credentials_exception
-
-#     user_id: str = payload.get("sub")
-#     if user_id is None:
-#         raise credentials_exception
-
-#     user_model = User(db)
-#     user = await user_model.get_user_by_id(user_id)
-#     if user is None:
-#         raise credentials_exception
-
-#     return user
-
-
-# # -----------------------------
-# # Updated Admin User Dependency
-# # -----------------------------
-# async def get_current_admin_user(
-#     current_user: dict = Depends(get_current_user)
-# ) -> dict:
-#     """
-#     Verify that the current user is an admin.
-#     """
-#     if not current_user:
-#         raise HTTPException(
-#             status_code=status.HTTP_401_UNAUTHORIZED,
-#             detail="Not authenticated"
-#         )
-
-#     if current_user.get("role") != "admin":
-#         raise HTTPException(
-#             status_code=status.HTTP_403_FORBIDDEN,
-#             detail="Admin access required"
-#         )
-
-#     return current_user
-
-
-# def create_tokens(user: Dict) -> Dict:
-#     """Create both access and refresh tokens"""
-#     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-#     token_data = {"sub": str(user["_id"]), "email": user["email"], "role": user["role"]}
-
-#     access_token = create_access_token(data=token_data, expires_delta=access_token_expires)
-#     refresh_token = create_refresh_token(data=token_data)
-
-#     return {
-#         "access_token": access_token,
-#         "refresh_token": refresh_token,
-#         "token_type": "bearer"
-#     }
-
 
