@@ -8,7 +8,7 @@ class UserRegistration(BaseModel):
     password: str = Field(..., min_length=6, max_length=72)
     confirm_password: str = Field(..., min_length=6, max_length=72)
     first_name: str = Field(..., min_length=2, max_length=50)
-    last_name: str = Field(..., min_length=2, max_length=50)
+    last_name: Optional[str] = Field(default='', max_length=50)
     phone: str = Field(..., min_length=10, max_length=15)
     date_of_birth: str = Field(..., description="Format: YYYY-MM-DD")
     
