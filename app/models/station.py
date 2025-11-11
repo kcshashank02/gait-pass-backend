@@ -105,25 +105,15 @@ class Station:
             return None
 
     
-    async def delete_station(self, station_id: str) -> bool:
-        """Soft delete station"""
+    async def deletestation(self, station_id: str) -> bool:
+        """Hard delete station - permanently removes it"""
         try:
-            result = await self.collection.update_one(
-                {"_id": ObjectId(station_id)},
-                {
-                    "$set": {
-                        "is_active": False,
-                        "deleted_at": datetime.utcnow(),
-                        "updated_at": datetime.utcnow()
-                    }
-                }
-            )
-            
-            return result.modified_count > 0
-            
+            result = await self.collection.delete_one({"_id": ObjectId(station_id)})
+            return result.deleted_count > 0
         except Exception as e:
-            logger.error(f"❌ Station deletion failed: {e}")
+            logger.error(f"Station deletion failed: {e}")
             return False
+
     
     async def search_stations(self, query: str) -> List[Dict]:
         """Search stations by name or city"""
