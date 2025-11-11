@@ -105,7 +105,7 @@ class Station:
             return None
 
     
-    async def deletestation(self, station_id: str) -> bool:
+    async def delete_station(self, station_id: str) -> bool:
         """Hard delete station - permanently removes it"""
         try:
             result = await self.collection.delete_one({"_id": ObjectId(station_id)})
