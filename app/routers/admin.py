@@ -77,6 +77,9 @@ async def list_users(
         # Format user data
         users_list = []
         for user in users:
+            wallet = await db.wallets.find_one({"user_id": user["_id"]}, {"balance": 1})
+            wallet_balance = float(wallet.get("balance", 0.0)) if wallet else 0.0
+
             users_list.append({
                 "id": str(user["_id"]),
                 "email": user["email"],
@@ -84,6 +87,7 @@ async def list_users(
                 "last_name": user["last_name"],
                 "phone": user.get("phone"),
                 "role": user["role"],
+                "wallet_balance": wallet_balance, 
                 "is_active": user.get("is_active", True),
                 "created_at": user.get("created_at")
             })
@@ -102,6 +106,7 @@ async def list_users(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve users"
         )
+
 
 
 # ✅ NEW endpoint - List only admin users
