@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Gait-Pass Backend API...")
+    logger.info(f"Environment: {settings.ENVIRONMENT}")
+    logger.info(f"ML Service URL: {settings.ML_SERVICE_URL}")
     await connect_to_mongodb()
     logger.info("MongoDB connected")
     yield
@@ -26,11 +28,11 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# ✅ Parse CORS origins from environment variable
+# ✅ Parse CORS origins from settings
 origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
 logger.info(f"CORS Origins: {origins}")
 
-# ✅ Add CORS middleware with environment-based origins
+# ✅ Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -54,6 +56,7 @@ async def root():
         "message": "Gait-Pass Backend API",
         "status": "running",
         "version": settings.VERSION,
+        "environment": settings.ENVIRONMENT,
         "features": [
             "User authentication & authorization",
             "Face recognition via ML microservice",
@@ -69,5 +72,6 @@ async def health():
     return {
         "status": "healthy",
         "database": "connected",
-        "ml_service_url": settings.ML_SERVICE_URL
+        "ml_service_url": settings.ML_SERVICE_URL,
+        "environment": settings.ENVIRONMENT
     }

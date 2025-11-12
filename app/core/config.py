@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings
 from pydantic import Field
 from typing import Optional
 
+
 class Settings(BaseSettings):
     # API Configuration
     API_V1_STR: str = "/api"
@@ -16,10 +17,15 @@ class Settings(BaseSettings):
     
     # Database
     MONGODB_URL: str
-    DATABASE_NAME: str = Field(default="gaitpass")  # ✅ Added database name
+    DATABASE_NAME: str = Field(default="gaitpass")
     
     # ML Service URL
     ML_SERVICE_URL: str = Field(default="http://localhost:7860")
+    
+    # ✅ CORS Origins (comma-separated)
+    CORS_ORIGINS: str = Field(
+        default="http://localhost:3000,http://localhost:5173"
+    )
     
     # Environment
     ENVIRONMENT: str = "development"
@@ -27,6 +33,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+
 
 # Initialize settings
 settings = Settings()
