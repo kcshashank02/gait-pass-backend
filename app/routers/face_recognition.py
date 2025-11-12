@@ -92,18 +92,123 @@ async def register_face_embedding_only(
 
 # ---------------------------------------------------------------------------
 # ✅ Test Face Recognition (No Authentication Required)
-# ---------------------------------------------------------------------------
+# # ---------------------------------------------------------------------------
+# @router.post("/test-face-recognition")
+# async def test_face_recognition(
+#     frame: UploadFile = File(...),
+#     db=Depends(get_database)
+# ):
+#     """Test face recognition - For users to verify their registered face"""
+#     try:
+#         # Read image
+#         image_bytes = await frame.read()
+        
+#         # Call ML service to extract embedding
+#         ml_service_url = settings.ML_SERVICE_URL
+#         files = {"image": ("frame.jpg", image_bytes, "image/jpeg")}
+        
+#         async with httpx.AsyncClient(timeout=30.0) as client:
+#             response = await client.post(
+#                 f"{ml_service_url}/extract-embedding",
+#                 files=files
+#             )
+        
+#         if response.status_code != 200:
+#             raise HTTPException(
+#                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#                 detail="ML service failed to extract embedding"
+#             )
+        
+#         ml_response = response.json()
+#         query_embedding = ml_response.get("embedding")
+        
+#         if not query_embedding:
+#             return {
+#                 "recognized": False,
+#                 "message": "No face detected in image"
+#             }
+        
+#         # Get all registered faces from database
+#         face_data_model = FaceData(db)
+#         all_embeddings = await face_data_model.get_all_active_embeddings()
+        
+#         if not all_embeddings:
+#             return {
+#                 "recognized": False,
+#                 "message": "No registered faces in system"
+#             }
+        
+#         # all_embeddings is already in correct format: {user_id: [embedding]}
+#         known_faces = all_embeddings
+        
+#         # Call ML service for batch recognition
+#         async with httpx.AsyncClient(timeout=30.0) as client:
+#             response = await client.post(
+#                 f"{ml_service_url}/batch-recognize",
+#                 json={
+#                     "query_embedding": query_embedding,
+#                     "known_faces": known_faces,
+#                     "threshold": 0.7
+#                 }
+#             )
+        
+#         if response.status_code != 200:
+#             raise HTTPException(
+#                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#                 detail="Face recognition failed"
+#             )
+        
+#         result = response.json()
+        
+#         if result.get("recognized"):
+#             # Get user details
+#             user_model = User(db)
+#             user = await user_model.get_user_by_id(result["user_id"])
+            
+#             return {
+#                 "recognized": True,
+#                 "user_id": result["user_id"],
+#                 "user_name": f"{user['first_name']} {user['last_name']}" if user else "Unknown",
+#                 "email": user["email"] if user else None,
+#                 "confidence": result.get("confidence", 0.0),
+#                 "match_score": result.get("min_distance", 0.0)
+#             }
+#         else:
+#             return {
+#                 "recognized": False,
+#                 "message": "Face not recognized. Please register your face first."
+#             }
+            
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         logger.error(f"Test face recognition failed: {e}")
+#         raise HTTPException(
+#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             detail=f"Face recognition test failed: {str(e)}"
+#         )
+
+
+
+
+
+
 @router.post("/test-face-recognition")
 async def test_face_recognition(
     frame: UploadFile = File(...),
     db=Depends(get_database)
 ):
-    """Test face recognition - For users to verify their registered face"""
+    """
+    Test face recognition - Verify registered face
+    """
     try:
+        logger.info("Starting face recognition test...")
+        
         # Read image
         image_bytes = await frame.read()
+        logger.info(f"Image received: {len(image_bytes)} bytes")
         
-        # Call ML service to extract embedding
+        # Extract embedding from image
         ml_service_url = settings.ML_SERVICE_URL
         files = {"image": ("frame.jpg", image_bytes, "image/jpeg")}
         
@@ -112,81 +217,125 @@ async def test_face_recognition(
                 f"{ml_service_url}/extract-embedding",
                 files=files
             )
+            
+            if response.status_code != 200:
+                logger.error(f"ML service error: {response.status_code} - {response.text}")
+                return {
+                    "success": False,
+                    "recognized": False,
+                    "message": f"ML service error: {response.text}"
+                }
+            
+            ml_response = response.json()
+            logger.info(f"ML response: {ml_response}")
+            
+            if not ml_response.get("success"):
+                return {
+                    "success": False,
+                    "recognized": False,
+                    "message": ml_response.get("message", "Face extraction failed")
+                }
+            
+            query_embedding = ml_response.get("embedding")
+            
+            if not query_embedding:
+                return {
+                    "success": False,
+                    "recognized": False,
+                    "message": "No face detected in image"
+                }
+            
         
-        if response.status_code != 200:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="ML service failed to extract embedding"
-            )
+        # Get all registered faces
+        facedata_model = FaceData(db)
+        all_embeddings = await facedata_model.get_all_active_embeddings()
         
-        ml_response = response.json()
-        query_embedding = ml_response.get("embedding")
-        
-        if not query_embedding:
-            return {
-                "recognized": False,
-                "message": "No face detected in image"
-            }
-        
-        # Get all registered faces from database
-        face_data_model = FaceData(db)
-        all_embeddings = await face_data_model.get_all_active_embeddings()
+        logger.info(f"Found {len(all_embeddings)} registered faces")
+        logger.info(f"Known faces format: {list(all_embeddings.keys())[:3] if all_embeddings else []}")
         
         if not all_embeddings:
             return {
+                "success": True,
                 "recognized": False,
                 "message": "No registered faces in system"
             }
         
-        # all_embeddings is already in correct format: {user_id: [embedding]}
-        known_faces = all_embeddings
+        # ✅ FIX: Ensure known_faces format is correct {user_id: [embedding]}
+        # Check if embeddings are already in correct format
+        known_faces = {}
+        for user_id, embedding_data in all_embeddings.items():
+            # Handle both formats: direct list or nested dict
+            if isinstance(embedding_data, list):
+                known_faces[user_id] = embedding_data
+            elif isinstance(embedding_data, dict) and 'embedding' in embedding_data:
+                known_faces[user_id] = embedding_data['embedding']
+            else:
+                logger.warning(f"Unexpected embedding format for user {user_id}")
+                continue
         
-        # Call ML service for batch recognition
+        logger.info(f"Prepared {len(known_faces)} faces for comparison")
+        
+        # Batch recognition
         async with httpx.AsyncClient(timeout=30.0) as client:
+            payload = {
+                "query_embedding": query_embedding,
+                "known_faces": known_faces,
+                "threshold": 0.4
+            }
+            
+            logger.info(f"Sending batch recognize request with {len(known_faces)} known faces")
+            
             response = await client.post(
                 f"{ml_service_url}/batch-recognize",
-                json={
-                    "query_embedding": query_embedding,
-                    "known_faces": known_faces,
-                    "threshold": 0.7
+                json=payload
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"Batch recognition error: {response.status_code} - {response.text}")
+                return {
+                    "success": False,
+                    "recognized": False,
+                    "message": "Face recognition failed"
                 }
-            )
-        
-        if response.status_code != 200:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Face recognition failed"
-            )
-        
-        result = response.json()
-        
-        if result.get("recognized"):
-            # Get user details
-            user_model = User(db)
-            user = await user_model.get_user_by_id(result["user_id"])
             
+            result = response.json()
+            logger.info(f"Recognition result: {result}")
+            
+            if result.get("recognized"):
+                # Get user details
+                user_model = User(db)
+                user = await user_model.get_user_by_id(result["user_id"])
+                
+                if user:
+                    logger.info(f"Face recognized: {user['email']} (similarity: {result.get('similarity')})")
+                    return {
+                        "success": True,
+                        "recognized": True,
+                        "user_id": result["user_id"],
+                        "username": f"{user.get('first_name', '')} {user.get('last_name', '')}".strip(),
+                        "email": user.get("email"),
+                        "confidence": result.get("similarity", 0.0),
+                        "message": f"✅ Face recognized as {user.get('email')}"
+                    }
+            
+            logger.info(f"Face not recognized (best similarity: {result.get('similarity')})")
             return {
-                "recognized": True,
-                "user_id": result["user_id"],
-                "user_name": f"{user['first_name']} {user['last_name']}" if user else "Unknown",
-                "email": user["email"] if user else None,
-                "confidence": result.get("confidence", 0.0),
-                "match_score": result.get("min_distance", 0.0)
-            }
-        else:
-            return {
+                "success": True,
                 "recognized": False,
-                "message": "Face not recognized. Please register your face first."
+                "message": f"Face not recognized. Best match similarity: {result.get('similarity', 0.0):.3f} (threshold: 0.4)",
+                "best_similarity": result.get("similarity", 0.0)
             }
-            
-    except HTTPException:
-        raise
+    
     except Exception as e:
-        logger.error(f"Test face recognition failed: {e}")
+        logger.error(f"Test face recognition failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Face recognition test failed: {str(e)}"
         )
+
+
+
+
 
 
 # ---------------------------------------------------------------------------

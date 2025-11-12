@@ -57,7 +57,6 @@ class FaceData:
                 doc["_id"] = str(doc["_id"])
                 doc["user_id"] = str(doc["user_id"])
             
-            logger.info(f"✅ Face embedding stored for user {user_id} - {len(face_embedding)} dimensions")
             return doc
             
         except Exception as e:
@@ -80,28 +79,58 @@ class FaceData:
             logger.error(f"Get embedding failed: {e}")
             return None
     
-    async def get_all_active_embeddings(self) -> Dict[str, List[List[float]]]:
-        """Get all active face embeddings grouped by user_id"""
+    # async def get_all_active_embeddings(self) -> Dict[str, List[List[float]]]:
+    #     """Get all active face embeddings grouped by user_id"""
+    #     try:
+    #         cursor = self.collection.find(
+    #             {"is_active": True},
+    #             {"user_id": 1, "face_embedding": 1}  # ✅ Correct field name
+    #         )
+        
+    #         embeddings_dict = {}
+    #         async for doc in cursor:
+    #             user_id = str(doc["user_id"])
+    #             embedding = doc.get("face_embedding")  # ✅ Singular, not plural
+            
+    #         if embedding:
+    #             if user_id not in embeddings_dict:
+    #                 embeddings_dict[user_id] = []
+    #             embeddings_dict[user_id].append(embedding)
+        
+    #         return embeddings_dict
+        
+    #     except Exception as e:
+    #         logger.error(f"Failed to get all embeddings: {e}")
+    #         return {}
+    async def get_all_active_embeddings(self) -> Dict[str, List[float]]:
+        """
+        Get all face embeddings
+        Returns: {user_id: embedding_list}
+        """
         try:
             cursor = self.collection.find(
                 {"is_active": True},
-                {"user_id": 1, "face_embedding": 1}  # ✅ Correct field name
+                {"user_id": 1, "face_embedding": 1}  # ✅ Changed from "embedding" to "face_embedding"
             )
-        
-            embeddings_dict = {}
-            async for doc in cursor:
-                user_id = str(doc["user_id"])
-                embedding = doc.get("face_embedding")  # ✅ Singular, not plural
             
-            if embedding:
-                if user_id not in embeddings_dict:
-                    embeddings_dict[user_id] = []
-                embeddings_dict[user_id].append(embedding)
+            embeddings = {}
+            total_docs = 0
+            
+            async for doc in cursor:
+                total_docs += 1
+                user_id = str(doc["user_id"])
+                # ✅ Get face_embedding instead of embedding
+                embedding = doc.get("face_embedding", [])
+                
+                logger.info(f"Document {total_docs}: user={user_id}, embedding_len={len(embedding)}")
+                
+                if embedding and len(embedding) > 0:
+                    embeddings[user_id] = embedding
         
-            return embeddings_dict
-        
+            
+            return embeddings
         except Exception as e:
-            logger.error(f"Failed to get all embeddings: {e}")
+            logger.error(f"Get all embeddings failed: {e}", exc_info=True)
             return {}
 
     
